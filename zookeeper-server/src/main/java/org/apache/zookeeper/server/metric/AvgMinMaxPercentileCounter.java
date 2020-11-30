@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,13 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.zookeeper.server.metric;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Reservoir;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.UniformSnapshot;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,16 +29,16 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
-
+import org.apache.zookeeper.metrics.Summary;
 
 /**
  * Generic long counter that keep track of min/max/avg/percentiles.
  * The counter is thread-safe
  */
-public class AvgMinMaxPercentileCounter extends Metric  {
+public class AvgMinMaxPercentileCounter extends Metric implements Summary {
 
-    private String name;
-    private AvgMinMaxCounter counter;
+    private final String name;
+    private final AvgMinMaxCounter counter;
     private final ResettableUniformReservoir reservoir;
     private final Histogram histogram;
 
@@ -95,6 +95,7 @@ public class AvgMinMaxPercentileCounter extends Metric  {
             count.set(0);
             values = new AtomicLongArray(DEFAULT_SIZE);
         }
+
     }
 
     public AvgMinMaxPercentileCounter(String name) {
@@ -133,4 +134,5 @@ public class AvgMinMaxPercentileCounter extends Metric  {
         m.put("p999_" + name, Math.round(this.histogram.getSnapshot().get999thPercentile()));
         return m;
     }
+
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,25 +19,28 @@
 package org.apache.zookeeper.server.metric;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.zookeeper.metrics.Summary;
 
 /**
  * Generic long counter that keep track of min/max/avg. The counter is
  * thread-safe
  */
-public class AvgMinMaxCounter extends Metric {
-    private String name;
-    private AtomicLong total = new AtomicLong();
-    private AtomicLong min = new AtomicLong(Long.MAX_VALUE);
-    private AtomicLong max = new AtomicLong(Long.MIN_VALUE);
-    private AtomicLong count = new AtomicLong();
+public class AvgMinMaxCounter extends Metric implements Summary {
+
+    private final String name;
+    private final AtomicLong total = new AtomicLong();
+    private final AtomicLong min = new AtomicLong(Long.MAX_VALUE);
+    private final AtomicLong max = new AtomicLong(Long.MIN_VALUE);
+    private final AtomicLong count = new AtomicLong();
 
     public AvgMinMaxCounter(String name) {
         this.name = name;
     }
-    
+
     public void addDataPoint(long value) {
         total.addAndGet(value);
         count.incrementAndGet();
@@ -47,16 +50,16 @@ public class AvgMinMaxCounter extends Metric {
 
     private void setMax(long value) {
         long current;
-        while (value > (current = max.get())
-                && !max.compareAndSet(current, value))
-            ;
+        while (value > (current = max.get()) && !max.compareAndSet(current, value)) {
+            // no op
+        }
     }
 
     private void setMin(long value) {
         long current;
-        while (value < (current = min.get())
-                && !min.compareAndSet(current, value))
-            ;
+        while (value < (current = min.get()) && !min.compareAndSet(current, value)) {
+            // no op
+        }
     }
 
     public double getAvg() {
@@ -65,9 +68,9 @@ public class AvgMinMaxCounter extends Metric {
         long currentCount = count.get();
         long currentTotal = total.get();
         if (currentCount > 0) {
-            double avgLatency = currentTotal / (double)currentCount;
+            double avgLatency = currentTotal / (double) currentCount;
             BigDecimal bg = new BigDecimal(avgLatency);
-            return bg.setScale(4, BigDecimal.ROUND_HALF_UP).doubleValue();
+            return bg.setScale(4, RoundingMode.HALF_UP).doubleValue();
         }
         return 0;
     }
@@ -78,12 +81,12 @@ public class AvgMinMaxCounter extends Metric {
 
     public long getMax() {
         long current = max.get();
-        return  (current == Long.MIN_VALUE) ? 0: current;
+        return (current == Long.MIN_VALUE) ? 0 : current;
     }
 
     public long getMin() {
         long current = min.get();
-        return  (current == Long.MAX_VALUE) ? 0: current;
+        return (current == Long.MAX_VALUE) ? 0 : current;
     }
 
     public long getTotal() {

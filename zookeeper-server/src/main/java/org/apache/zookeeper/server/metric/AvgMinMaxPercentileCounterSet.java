@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,19 +18,19 @@
 
 package org.apache.zookeeper.server.metric;
 
-import java.lang.Integer;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.ConcurrentHashMap;
+import org.apache.zookeeper.metrics.SummarySet;
 
 /**
  * Generic set of long counters that keep track of min/max/avg
  * for different keys.
  * The counter is thread-safe
  */
-public class AvgMinMaxPercentileCounterSet extends Metric {
-    private String name;
+public class AvgMinMaxPercentileCounterSet extends Metric implements SummarySet {
+
+    private final String name;
 
     private ConcurrentHashMap<String, AvgMinMaxPercentileCounter> counters = new ConcurrentHashMap<>();
 
@@ -77,4 +77,5 @@ public class AvgMinMaxPercentileCounterSet extends Metric {
         }
         return m;
     }
+
 }

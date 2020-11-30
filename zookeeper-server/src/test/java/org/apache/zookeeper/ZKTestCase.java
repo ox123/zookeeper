@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,14 +18,17 @@
 
 package org.apache.zookeeper;
 
-import org.junit.Assert;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import java.io.File;
+import java.time.LocalDateTime;
+import org.apache.zookeeper.util.ServiceUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.junit.Rule;
-import org.junit.rules.MethodRule;
-import org.junit.rules.TestWatchman;
-import org.junit.runner.RunWith;
-import org.junit.runners.model.FrameworkMethod;
 
 /**
  * Base class for a non-parameterized ZK test.
@@ -33,10 +36,15 @@ import org.junit.runners.model.FrameworkMethod;
  * Basic utilities shared by all tests. Also logging of various events during
  * the test execution (start/stop/success/failure/etc...)
  */
-@SuppressWarnings("deprecation")
-@RunWith(JUnit4ZKTestRunner.class)
 public class ZKTestCase {
+
+    protected static final File testBaseDir = new File(System.getProperty("build.test.dir", "build"));
     private static final Logger LOG = LoggerFactory.getLogger(ZKTestCase.class);
+
+    static {
+        // Disable System.exit in tests.
+        ServiceUtils.setSystemExitProcedure(ServiceUtils.LOG_ONLY);
+    }
 
     private String testName;
 
@@ -44,43 +52,43 @@ public class ZKTestCase {
         return testName;
     }
 
-    @Rule
-    public MethodRule watchman = new TestWatchman() {
-        @Override
-        public void starting(FrameworkMethod method) {
-            // By default, disable starting a JettyAdminServer in tests to avoid
-            // accidentally attempting to start multiple admin servers on the
-            // same port.
-            System.setProperty("zookeeper.admin.enableServer", "false");
-            // ZOOKEEPER-2693 disables all 4lw by default.
-            // Here we enable the 4lw which ZooKeeper tests depends.
-            System.setProperty("zookeeper.4lw.commands.whitelist", "*");
-            testName = method.getName();
-            LOG.info("STARTING " + testName);
+    @BeforeAll
+    public static void before() {
+        if (!testBaseDir.exists()) {
+            assertTrue(testBaseDir.mkdirs(),
+                "Cannot properly create test base directory " + testBaseDir.getAbsolutePath());
+        } else if (!testBaseDir.isDirectory()) {
+            assertTrue(testBaseDir.delete(),
+                "Cannot properly delete file with duplicate name of test base directory " + testBaseDir.getAbsolutePath());
+            assertTrue(testBaseDir.mkdirs(),
+                "Cannot properly create test base directory " + testBaseDir.getAbsolutePath());
         }
+    }
 
-        @Override
-        public void finished(FrameworkMethod method) {
-            LOG.info("FINISHED " + testName);
-        }
+    @BeforeEach
+    public void starting(TestInfo testInfo) {
+        // By default, disable starting a JettyAdminServer in tests to avoid
+        // accidentally attempting to start multiple admin servers on the
+        // same port.
+        System.setProperty("zookeeper.admin.enableServer", "false");
+        // ZOOKEEPER-2693 disables all 4lw by default.
+        // Here we enable the 4lw which ZooKeeper tests depends.
+        System.setProperty("zookeeper.4lw.commands.whitelist", "*");
+        LOG.info("STARTING {}", testInfo.getTestMethod());
+    }
 
-        @Override
-        public void succeeded(FrameworkMethod method) {
-            LOG.info("SUCCEEDED " + testName);
-        }
-
-        @Override
-        public void failed(Throwable e, FrameworkMethod method) {
-            LOG.info("FAILED " + testName, e);
-        }
-
-    };
+    @AfterEach
+    public void finished(TestInfo testInfo) {
+        LOG.info("FINISHED {}", testInfo.getTestMethod());
+    }
 
     public interface WaitForCondition {
+
         /**
          * @return true when success
          */
         boolean evaluate();
+
     }
 
     /**
@@ -91,14 +99,15 @@ public class ZKTestCase {
      * @param timeout   timeout in seconds
      * @throws InterruptedException
      */
-    public void waitFor(String msg, WaitForCondition condition, int timeout)
-            throws InterruptedException {
-        for (int i = 0; i < timeout; ++i) {
+    public void waitFor(String msg, WaitForCondition condition, int timeout) throws InterruptedException {
+        final LocalDateTime deadline = LocalDateTime.now().plusSeconds(timeout);
+        while (LocalDateTime.now().isBefore(deadline)) {
             if (condition.evaluate()) {
                 return;
             }
             Thread.sleep(100);
         }
-        Assert.fail(msg);
+        fail(msg);
     }
+
 }

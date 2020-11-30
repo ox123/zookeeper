@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,22 +18,14 @@
 
 package org.apache.zookeeper.server.auth;
 
-import java.util.Arrays;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.Id;
-import org.apache.zookeeper.jmx.MBeanRegistry;
 import org.apache.zookeeper.server.ServerCnxn;
 import org.apache.zookeeper.server.ServerMetrics;
-import org.apache.zookeeper.server.ZooKeeperServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.zookeeper.jmx.ZKMBeanInfo;
-
-import javax.management.JMException;
 
 /**
  * This is not a true AuthenticationProvider in the strict sense. it does
@@ -44,8 +36,8 @@ import javax.management.JMException;
  */
 
 public class EnsembleAuthenticationProvider implements AuthenticationProvider {
-    private static final Logger LOG = LoggerFactory
-            .getLogger(EnsembleAuthenticationProvider.class);
+
+    private static final Logger LOG = LoggerFactory.getLogger(EnsembleAuthenticationProvider.class);
 
     public static final String ENSEMBLE_PROPERTY = "zookeeper.ensembleAuthName";
     private static final int MIN_LOGGING_INTERVAL_MS = 1000;
@@ -61,8 +53,8 @@ public class EnsembleAuthenticationProvider implements AuthenticationProvider {
 
     public void setEnsembleNames(String namesCSV) {
         ensembleNames = new HashSet<String>();
-        for (String name: namesCSV.split(",")) {
-            ensembleNames.add(name.trim());    
+        for (String name : namesCSV.split(",")) {
+            ensembleNames.add(name.trim());
         }
     }
 
@@ -79,23 +71,21 @@ public class EnsembleAuthenticationProvider implements AuthenticationProvider {
     private long lastFailureLogged;
 
     @Override
-    public KeeperException.Code
-    handleAuthentication(ServerCnxn cnxn, byte[] authData)
-    {
+    public KeeperException.Code handleAuthentication(ServerCnxn cnxn, byte[] authData) {
         if (authData == null || authData.length == 0) {
-            ServerMetrics.ENSEMBLE_AUTH_SKIP.add(1);
+            ServerMetrics.getMetrics().ENSEMBLE_AUTH_SKIP.add(1);
             return KeeperException.Code.OK;
         }
 
-        String receivedEnsembleName = new String(authData);
+        String receivedEnsembleName = new String(authData, StandardCharsets.UTF_8);
 
         if (ensembleNames == null) {
-            ServerMetrics.ENSEMBLE_AUTH_SKIP.add(1);
+            ServerMetrics.getMetrics().ENSEMBLE_AUTH_SKIP.add(1);
             return KeeperException.Code.OK;
         }
 
         if (ensembleNames.contains(receivedEnsembleName)) {
-            ServerMetrics.ENSEMBLE_AUTH_SUCCESS.add(1);
+            ServerMetrics.getMetrics().ENSEMBLE_AUTH_SUCCESS.add(1);
             return KeeperException.Code.OK;
         }
 
@@ -111,8 +101,8 @@ public class EnsembleAuthenticationProvider implements AuthenticationProvider {
          * we return an error, the client will get a fatal auth error and
          * shutdown.
          */
-        ServerMetrics.ENSEMBLE_AUTH_FAIL.add(1);
-        cnxn.close();
+        ServerMetrics.getMetrics().ENSEMBLE_AUTH_FAIL.add(1);
+        cnxn.close(ServerCnxn.DisconnectReason.FAILED_HANDSHAKE);
         return KeeperException.Code.BADARGUMENTS;
     }
 
@@ -134,4 +124,5 @@ public class EnsembleAuthenticationProvider implements AuthenticationProvider {
     public boolean isValid(String id) {
         return false;
     }
+
 }

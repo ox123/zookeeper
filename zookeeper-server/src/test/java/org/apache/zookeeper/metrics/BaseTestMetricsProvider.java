@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,11 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.zookeeper.metrics;
 
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import org.apache.zookeeper.metrics.impl.NullMetricsProvider;
 
 /**
@@ -44,6 +46,14 @@ public abstract class BaseTestMetricsProvider implements MetricsProvider {
     public void stop() {
     }
 
+    @Override
+    public void dump(BiConsumer<String, Object> sink) {
+    }
+
+    @Override
+    public void resetAllValues() {
+    }
+
     public static final class MetricsProviderCapturingLifecycle extends BaseTestMetricsProvider {
 
         public static final AtomicBoolean configureCalled = new AtomicBoolean();
@@ -57,7 +67,7 @@ public abstract class BaseTestMetricsProvider implements MetricsProvider {
             stopCalled.set(false);
             getRootContextCalled.set(false);
         }
-        
+
         @Override
         public void configure(Properties prprts) throws MetricsProviderLifeCycleException {
             if (!configureCalled.compareAndSet(false, true)) {
@@ -76,10 +86,8 @@ public abstract class BaseTestMetricsProvider implements MetricsProvider {
 
         @Override
         public MetricsContext getRootContext() {
-            if (!getRootContextCalled.compareAndSet(false, true)) {
-                // called twice
-                throw new IllegalStateException();
-            }
+            getRootContextCalled.set(true);
+
             return NullMetricsProvider.NullMetricsContext.INSTANCE;
         }
 
